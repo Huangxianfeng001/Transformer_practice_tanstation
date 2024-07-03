@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
         "./Transformer_components"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }
