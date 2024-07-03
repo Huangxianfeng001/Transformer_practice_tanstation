@@ -7,7 +7,7 @@ import torch.nn.functional as F
 def clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
-Class Multi_head_attention(nn.Module):
+class Multi_head_attention(nn.Module):
     def __init__(self, d_model, n_head, dropout=0.1):
         super(Multi_head_attention, self).__init__()
         self.d_model = d_model

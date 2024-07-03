@@ -14,4 +14,4 @@ class FeedForward(nn.Module):
             )
     
     def forward(self, inputs: Tensor):
-    return self.seq(inputs)
+        return self.seq(inputs)
