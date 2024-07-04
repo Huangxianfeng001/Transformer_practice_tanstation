@@ -51,10 +51,10 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 class Encoderlayer(nn.Module):
-    def __init__(self,d_model,d_inner_hid,dropout):
+    def __init__(self,d_model, n_head, d_inner_hid,dropout):
         super(Encoderlayer, self).__init__()
-        self.attention = Multi_head_attention()
-        self.layer_norm = LayerNorm()
+        self.attention = Multi_head_attention(d_model, n_head, dropout)
+        self.layer_norm = LayerNorm(d_model)
         self.feed_forward = FeedForward(d_model,d_inner_hid,dropout)
 
     def forward(self, x, mask):
@@ -67,9 +67,9 @@ class Encoderlayer(nn.Module):
         
 
 class Encoder(nn.Module):
-    def __init__(self,d_model,d_inner_hid,dropout):
+    def __init__(self,d_model, n_head, d_inner_hid, dropout):
         super(Encoder, self).__init__()
-        self.layers = nn.ModuleList([ Encoderlayer(d_model,d_inner_hid, dropout) for _ in range(6)])
+        self.layers = nn.ModuleList([ Encoderlayer(d_model, n_head, d_inner_hid, dropout) for _ in range(6)])
         self.pe = PositionalEncoding(d_model, dropout)
     def forward(self, x, mask):
         # x: [batch_size, seq_len, emb_dim]
