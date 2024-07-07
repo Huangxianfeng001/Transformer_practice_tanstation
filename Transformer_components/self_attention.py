@@ -3,6 +3,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import copy
+import math
 
 def clones(module, N):
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
@@ -17,11 +19,15 @@ class Multi_head_attention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, q, k, v, mask=None):
+        if mask is not None:
+            mask = mask.unsqueeze(1)
+
         batch_size = q.size(0)
         q,k,v =[ l(x).view(batch_size, -1, self.n_head, self.d_k).transpose(1, 2) for l, x in zip(self.linear, [q, k, v])]
-        scores = torch.matmul(q, k.transpose(-2, -1)) / torch.sqrt(self.d_k)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+
         if mask is not None:
-            scores = scores.masked_fill(mask==0, -1e9)
+            scores = scores.masked_fill( mask==0, -1e9)
         p_attn = F.softmax(scores, dim=-1)
         p_attn = self.dropout(p_attn)
         x = torch.matmul(p_attn, v)

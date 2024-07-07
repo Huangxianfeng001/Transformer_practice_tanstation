@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
-from self_attention import Multi_head_attention
-from Feedforward import FeedForward
+from .self_attention import Multi_head_attention
+from .Feedforward import FeedForward
+from torch.autograd import Variable
+import math
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class LayerNorm(nn.Module):
@@ -60,6 +62,8 @@ class Encoderlayer(nn.Module):
     def forward(self, x, mask):
         # x: [batch_size, seq_len, emb_dim]
         # mask: [batch_size, seq_len]
+        # print(x.size())
+        # print(mask.size())
         z = self.attention(x, x, x, mask)
         x = self.layer_norm(x+z)
         z2 = self.feed_forward(x)
