@@ -123,23 +123,40 @@ class Data_process:
 
     def build_dict(self, sentences, max_words=50000):
         word_count = Counter([word for sent in sentences for word in sent])
-        ls = word_count.most_common(max_words)
+        ls = word_count.most_common(int(max_words))
         total_words = len(ls) + 2 # account for UNK and PAD
         word_dict = {w[0]: index+2 for index, w in enumerate(ls)} # 0: <UNK>, 1: <PAD>
         word_dict['UNK'] = 1
         word_dict['PAD'] = 0
         
-        index_dict = {v:k for v,k in word_dict.items()}
+        index_dict = {v:k for k,v in word_dict.items()}
         return word_dict, total_words, index_dict
     
     def word2id(self, en, cn, en_dict, cn_dict, sort=True):
-        en = [[en_dict.get(word, 1) for word in sent] for sent in en]
-        cn = [[cn_dict.get(word, 1) for word in sent] for sent in cn]
+        """
+        将英文、中文单词列表转为单词索引列表
+        `sort=True`表示以英文语句长度排序，以便按批次填充时，同批次语句填充尽量少
+        """
+        length = len(en)
+        # 单词映射为索引
+        out_en_ids = [[en_dict.get(word, 1) for word in sent] for sent in en]
+        out_cn_ids = [[cn_dict.get(word, 1) for word in sent] for sent in cn]
+
+        # 按照语句长度排序
+        def len_argsort(seq):
+            """
+            传入一系列语句数据(分好词的列表形式)，
+            按照语句长度排序后，返回排序后原来各语句在数据中的索引下标
+            """
+            return sorted(range(len(seq)), key=lambda x: len(seq[x]))
+
+        # 按相同顺序对中文、英文样本排序
         if sort:
-            en = sorted(en, key=lambda x: len(x), reverse=True)
-            cn = sorted(cn, key=lambda x: len(x), reverse=True)
-            
-        return en, cn
+            # 以英文语句长度排序
+            sorted_index = len_argsort(out_en_ids)
+            out_en_ids = [out_en_ids[idx] for idx in sorted_index]
+            out_cn_ids = [out_cn_ids[idx] for idx in sorted_index]
+        return out_en_ids, out_cn_ids
 
     def split_batch(self, en, cn, batch_size, shuffle=True):
         """

@@ -119,16 +119,19 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
     传入一个训练好的模型，对指定数据进行预测
     """
     # 先用encoder进行encode
-    memory = model.encode(src, src_mask)
+    # memory = model.Encoder(src, src_mask)
+    memory = model.embedding_src(src)
+    memory = model.Encoder(memory, src_mask)
     # 初始化预测内容为1×1的tensor，填入开始符('BOS')的id，并将type设置为输入数据类型(LongTensor)
     ys = torch.ones(1, 1).fill_(start_symbol).type_as(src.data)
+    ys1 = model.embedding_tgt(ys)
     # 遍历输出的长度下标
     for i in range(max_len - 1):
         # decode得到隐层表示
-        out = model.decode(memory,
-                           src_mask,
-                           Variable(ys),
-                           Variable(subsequent_mask(ys.size(1)).type_as(src.data)))
+        out = model.Decoder(Variable(ys1),
+                            memory,
+                            src_mask,
+                            Variable(subsequent_mask(ys1.size(1)).type_as(memory.data)))
         # 将隐藏表示转为对词典各词的log_softmax概率分布表示
         prob = model.generator(out[:, -1])
         # 获取当前位置最大概率的预测词id
@@ -136,7 +139,7 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
         next_word = next_word.data[0]
         # 将当前位置预测的字符id与之前的预测内容拼接起来
         ys = torch.cat([ys,
-                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=1)
+                        torch.ones(1, 1).type_as(memory.data).fill_(next_word)], dim=1)
     return ys
 
 def test_result(data, data_test, model, loss_compute, nums_test = 10):
@@ -147,22 +150,13 @@ def test_result(data, data_test, model, loss_compute, nums_test = 10):
 
     print('>>>>> Evaluate')
     with torch.no_grad():
-        for i in range(len(data.en_val)):
-            # 打印待翻译的英文语句
-            print(data.en_index_dict.items)
-            en_sent = " ".join([data.en_index_dict[w] for w in data.en_val[i]])
-            print("\n" + en_sent)
-
-            # 打印对应的中文语句答案
-            cn_sent = " ".join([data.cn_index_dict[w] for w in data.cn_val[i]])
-            print("".join(cn_sent))
         for i in range(nums_test):
             print(len(data.en_index_dict))
             print(data.en_index_dict.items)
-            en_sent =" ".join([data.en_index_dict.get(w) for w in data1.en_train[i]])
+            en_sent =" ".join([data1.en_index_dict.get(w) for w in data1.en_train[i]])
             print("eng sentens is:\n" + en_sent)
 
-            cn_sent = " ".join([data.cn_index_dict[w] for w in data1.cn_train[i]])
+            cn_sent = " ".join([data1.cn_index_dict[w] for w in data1.cn_train[i]])
             print("cn sentens is:\n" + cn_sent)
 
             src = torch.from_numpy(np.array(data1.en_train[i])).long().to(DEVICE)
@@ -171,34 +165,21 @@ def test_result(data, data_test, model, loss_compute, nums_test = 10):
             # 设置attention mask
             src_mask = (src != 0).unsqueeze(-2)
 
-            out = model.Encoder(src, src_mask)
-
             out_prob = greedy_decode(model, src, src_mask, max_len=50, start_symbol=data.cn_dict['BOS'])
-            ans = []
-            for i in range(1, out_prob.shape[1]):
-                if data.cn_dict[out_prob[0, i]] == 'EOS':
-                    ans.append(data.cn_index_dict[out_prob[0, i]])
+            print(out_prob.size())
+            print(out_prob[0, 10])
+            translation = []
+            for j in range(1, out_prob.size(1)):
+                # 获取当前下标的输出字符
+                sym = data.cn_index_dict[out_prob[0, j].item()]
+                # 如果输出字符不为'EOS'终止符，则添加到当前语句的翻译结果列表
+                if sym != 'EOS':
+                    translation.append(sym)
+                # 否则终止遍历
                 else:
                     break
-            cn_sent_pred = " ".join(ans)
+            cn_sent_pred = " ".join(translation)
             print("cn sentens pred is:\n" + cn_sent_pred)
-
-            
-    
-    out = model(batch.src, batch.src_mask, batch.trg, batch.trg_mask)
-    # print(out.size())
-    loss = loss_compute(out, batch.trg_y, batch.ntokens)
-    total_loss += loss
-    total_tokens += batch.ntokens
-    tokens += batch.ntokens
-    if i % 50 == 1:
-        elapsed = time.time() - start
-        print("Epoch: %d, Batch Step: %d Loss: %f Tokens per Sec: %f" %
-                (epoch, i, loss / batch.ntokens, tokens / elapsed))
-        start = time.time()
-        tokens = 0
-
-
 
 Train_file_path = 'en-cn/train.txt'
 Val_file_path = 'en-cn/dev.txt'
